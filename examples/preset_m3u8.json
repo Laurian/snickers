@@ -1,7 +1,7 @@
 {
-  "name": "mp4_240p",
+  "name": "my_m3u8_files",
   "description": "HLS 1080 for tests",
-  "container": "mp4",
+  "container": "m3u8",
   "rateControl": "vbr",
   "video": {
     "height": "240",

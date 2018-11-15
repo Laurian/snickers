@@ -2,6 +2,7 @@ package encoders
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"code.cloudfoundry.org/lager"
@@ -37,7 +38,7 @@ func FFMPEGEncode(logger lager.Logger, dbInstance db.Storage, jobID string) erro
 	defer outputCtx.CloseOutputAndRelease()
 
 	job.Status = types.JobEncoding
-	job.Details = "0%"
+	job.Progress = "0%"
 	dbInstance.UpdateJob(job.ID, job)
 
 	//get audio and video stream and the streaMap
@@ -53,13 +54,13 @@ func FFMPEGEncode(logger lager.Logger, dbInstance db.Storage, jobID string) erro
 		return err
 	}
 
-	processNewFrames(inputCtx, outputCtx, streamMap)
+	err = processNewFrames(inputCtx, outputCtx, streamMap)
 	if err != nil {
 		return err
 	}
 
-	if job.Details != "100%" {
-		job.Details = "100%"
+	if job.Progress != "100%" {
+		job.Progress = "100%"
 		dbInstance.UpdateJob(job.ID, job)
 	}
 
@@ -87,7 +88,6 @@ func processNewFrames(inputCtx *gmf.FmtCtx, outputCtx *gmf.FmtCtx, streamMap map
 				}
 				gmf.Release(p)
 			} else {
-				gmf.Release(p)
 				break
 			}
 			outputStream.Pts++
@@ -101,6 +101,7 @@ func processNewFrames(inputCtx *gmf.FmtCtx, outputCtx *gmf.FmtCtx, streamMap map
 
 func processAllFramesAndUpdateJobProgress(inputCtx *gmf.FmtCtx, outputCtx *gmf.FmtCtx, streamMap map[int]int, job types.Job, dbInstance db.Storage, totalFrames float64) error {
 	var lastDelta int64
+	framesCount := float64(0)
 	for packet := range inputCtx.GetNewPackets() {
 		inputStream, err := getStream(inputCtx, packet.StreamIndex())
 		if err != nil {
@@ -111,18 +112,17 @@ func processAllFramesAndUpdateJobProgress(inputCtx *gmf.FmtCtx, outputCtx *gmf.F
 			return err
 		}
 
-		framesCount := float64(0)
 		for frame := range packet.Frames(inputStream.CodecCtx()) {
-			err := proccessFrame(inputStream, outputStream, packet, frame, outputCtx, &lastDelta)
+			err := processFrame(inputStream, outputStream, packet, frame, outputCtx, &lastDelta)
 			if err != nil {
 				return err
 			}
 
 			outputStream.Pts++
 			framesCount++
-			percentage := strconv.FormatInt(int64(framesCount/totalFrames*100), 10) + "%"
-			if percentage != job.Details {
-				job.Details = percentage
+			percentage := fmt.Sprintf("%.2f", framesCount/totalFrames*100) + "%"
+			if percentage != job.Progress {
+				job.Progress = percentage
 				dbInstance.UpdateJob(job.ID, job)
 			}
 		}
@@ -197,7 +197,7 @@ func configurePacket(packet *gmf.Packet, outputStream *gmf.Stream, frame *gmf.Fr
 	return packet
 }
 
-func proccessFrame(inputStream *gmf.Stream, outputStream *gmf.Stream, packet *gmf.Packet, frame *gmf.Frame, outputCtx *gmf.FmtCtx, lastDelta *int64) error {
+func processFrame(inputStream *gmf.Stream, outputStream *gmf.Stream, packet *gmf.Packet, frame *gmf.Frame, outputCtx *gmf.FmtCtx, lastDelta *int64) error {
 	if outputStream.IsAudio() {
 		configureAudioFrame(packet, inputStream, outputStream, frame, lastDelta)
 	} else {
@@ -305,7 +305,7 @@ func getAudioCodec(job types.Job) string {
 	return "aac"
 }
 
-func GetResolution(job types.Job, inputWidth int, inputHeight int) (int, int) {
+func getResolution(job types.Job, inputWidth int, inputHeight int) (int, int) {
 	var width, height int
 	if job.Preset.Video.Width == "" && job.Preset.Video.Height == "" {
 		return inputWidth, inputHeight
@@ -350,7 +350,7 @@ func setVideoCtxParams(codecContext *gmf.CodecCtx, ist *gmf.Stream, job types.Jo
 		return err
 	}
 
-	width, height := GetResolution(job, ist.CodecCtx().Width(), ist.CodecCtx().Height())
+	width, height := getResolution(job, ist.CodecCtx().Width(), ist.CodecCtx().Height())
 
 	bitrate, err := strconv.Atoi(job.Preset.Video.Bitrate)
 	if err != nil {

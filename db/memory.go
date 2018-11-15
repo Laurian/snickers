@@ -40,6 +40,12 @@ func (r *memoryDatabase) ClearDatabase() error {
 
 // StorePreset stores preset information
 func (r *memoryDatabase) StorePreset(preset types.Preset) (types.Preset, error) {
+
+	//prevent replacing existing preset
+	if _, err := r.RetrievePreset(preset.Name); err == nil {
+		return types.Preset{}, errors.New("Error 409: Preset already exists, please update instead.")
+	}
+
 	r.mtx.Lock()
 	defer r.mtx.Unlock()
 
@@ -89,6 +95,17 @@ func (r *memoryDatabase) DeletePreset(presetName string) (types.Preset, error) {
 		return val, nil
 	}
 	return types.Preset{}, errors.New("preset not found")
+}
+
+func (r *memoryDatabase) DeleteJob(jobID string) (types.Job, error) {
+	r.mtx.RLock()
+	defer r.mtx.RUnlock()
+
+	if val, ok := r.jobs[jobID]; ok {
+		delete(r.jobs, jobID)
+		return val, nil
+	}
+	return types.Job{}, errors.New("job not found")
 }
 
 // StoreJob stores job information

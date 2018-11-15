@@ -17,33 +17,36 @@ func HTTPDownload(logger lager.Logger, config gonfig.Gonfig, dbInstance db.Stora
 	log.Info("start", lager.Data{"job": jobID})
 	defer log.Info("finished")
 
-	job, err := SetupJob(jobID, dbInstance, config)
+	job, err := dbInstance.RetrieveJob(jobID)
 	if err != nil {
-		log.Error("setting-up-job", err)
 		return err
 	}
 
-	respch, err := grab.GetAsync(job.LocalSource, job.Source)
+	client := grab.NewClient()
+	req, err := grab.NewRequest(job.LocalSource, job.Source)
 	if err != nil {
 		return nil
 	}
+	resp := client.Do(req)
+	if err := resp.Err(); err != nil {
+		return nil
+	}
 
-	resp := <-respch
 	for !resp.IsComplete() {
 		job, err = dbInstance.RetrieveJob(jobID)
 		if err != nil {
 			return err
 		}
 
-		percentage := strconv.FormatInt(int64(resp.BytesTransferred()*100/resp.Size), 10)
-		if job.Details != percentage {
-			job.Details = percentage + "%"
+		percentage := strconv.FormatInt(int64(resp.BytesComplete()*100/resp.Size), 10)
+		if job.Progress != percentage {
+			job.Progress = percentage + "%"
 			dbInstance.UpdateJob(job.ID, job)
 		}
 	}
 
-	if resp.Error != nil {
-		return resp.Error
+	if resp.Err() != nil {
+		return resp.Err()
 	}
 
 	return nil

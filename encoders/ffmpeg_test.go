@@ -69,7 +69,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 			Expect(err.Error()).To(Equal("output format is not initialized. Unable to allocate context"))
 		})
 
-		It("Should change job status and details when encoding", func() {
+		It("Should change job status and Progress when encoding", func() {
 			projectPath, _ := os.Getwd()
 			swapDir, _ := cfg.GetString("SWAP_DIRECTORY", "")
 			exampleJob := types.Job{
@@ -107,7 +107,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 			FFMPEGEncode(logger, dbInstance, exampleJob.ID)
 			changedJob, _ := dbInstance.RetrieveJob("123")
 
-			Expect(changedJob.Details).To(Equal("100%"))
+			Expect(changedJob.Progress).To(Equal("100%"))
 			Expect(changedJob.Status).To(Equal(types.JobEncoding))
 		})
 	})
@@ -140,7 +140,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 					},
 				},
 				Status:           types.JobCreated,
-				Details:          "0%",
+				Progress:         "0%",
 				LocalSource:      currentDir + "/../fixtures/videos/nyt.mp4",
 				LocalDestination: destinationFile,
 			}
@@ -209,7 +209,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 					},
 				},
 				Status:           types.JobCreated,
-				Details:          "0%",
+				Progress:         "0%",
 				LocalSource:      currentDir + "/../fixtures/videos/nyt.mp4",
 				LocalDestination: destinationFile,
 			}
@@ -266,7 +266,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 					},
 				},
 				Status:           types.JobCreated,
-				Details:          "0%",
+				Progress:         "0%",
 				LocalSource:      currentDir + "/../fixtures/videos/nyt.mp4",
 				LocalDestination: destinationFile,
 			}
@@ -323,7 +323,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 					},
 				},
 				Status:           types.JobCreated,
-				Details:          "0%",
+				Progress:         "0%",
 				LocalSource:      currentDir + "/../fixtures/videos/nyt.mp4",
 				LocalDestination: destinationFile,
 			}
@@ -369,7 +369,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 				},
 			}
 
-			resultWidth, resultHeight := GetResolution(job, 1280, 720)
+			resultWidth, resultHeight := getResolution(job, 1280, 720)
 			Expect(resultWidth).To(Equal(1000))
 			Expect(resultHeight).To(Equal(360))
 		})
@@ -384,7 +384,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 					Audio: types.AudioPreset{},
 				},
 			}
-			resultWidth, resultHeight := GetResolution(job1, 1280, 720)
+			resultWidth, resultHeight := getResolution(job1, 1280, 720)
 			Expect(resultWidth).To(Equal(640))
 			Expect(resultHeight).To(Equal(360))
 
@@ -397,7 +397,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 					Audio: types.AudioPreset{},
 				},
 			}
-			resultWidth, resultHeight = GetResolution(job2, 1280, 720)
+			resultWidth, resultHeight = getResolution(job2, 1280, 720)
 			Expect(resultWidth).To(Equal(640))
 			Expect(resultHeight).To(Equal(360))
 
@@ -410,7 +410,7 @@ var _ = Describe("FFmpeg Encoder", func() {
 					Audio: types.AudioPreset{},
 				},
 			}
-			resultWidth, resultHeight = GetResolution(job3, 1280, 720)
+			resultWidth, resultHeight = getResolution(job3, 1280, 720)
 			Expect(resultWidth).To(Equal(1280))
 			Expect(resultHeight).To(Equal(720))
 		})

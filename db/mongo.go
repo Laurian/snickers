@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/flavioribeiro/gonfig"
@@ -46,7 +47,14 @@ func (r *mongoDatabase) ClearDatabase() error {
 
 // StorePreset stores preset information
 func (r *mongoDatabase) StorePreset(preset types.Preset) (types.Preset, error) {
+
+	//prevent replacing existing preset
+	if _, err := r.RetrievePreset(preset.Name); err == nil {
+		return types.Preset{}, errors.New("Error 409: Preset already exists, please update instead.")
+	}
+
 	c := r.db.C("presets")
+
 	err := c.Insert(preset)
 	if err != nil {
 		return types.Preset{}, err
@@ -91,6 +99,21 @@ func (r *mongoDatabase) DeletePreset(presetName string) (types.Preset, error) {
 	err = c.Remove(bson.M{"name": presetName})
 	if err != nil {
 		return types.Preset{}, err
+	}
+	return result, nil
+}
+
+// DeleteJob deletes a job from the database
+func (r *mongoDatabase) DeleteJob(jobID string) (types.Job, error) {
+	result, err := r.RetrieveJob(jobID)
+	if err != nil {
+		return types.Job{}, err
+	}
+
+	c := r.db.C("jobs")
+	err = c.Remove(bson.M{"ID": jobID})
+	if err != nil {
+		return types.Job{}, err
 	}
 	return result, nil
 }

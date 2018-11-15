@@ -17,6 +17,7 @@ type Storage interface {
 	DeletePreset(string) (types.Preset, error)
 
 	// Job methods
+	DeleteJob(string) (types.Job, error)
 	StoreJob(types.Job) (types.Job, error)
 	RetrieveJob(string) (types.Job, error)
 	UpdateJob(string, types.Job) (types.Job, error)
@@ -25,12 +26,13 @@ type Storage interface {
 	ClearDatabase() error
 }
 
+// GetDatabase selects the right driver based on config
 func GetDatabase(config gonfig.Gonfig) (Storage, error) {
 	driver, err := config.GetString("DATABASE_DRIVER", "memory")
 	if err != nil {
 		return nil, err
 	}
-	if driver == "mongo" {
+	if driver == "mongo" || driver == "mongodb" {
 		return getMongoDatabase(config)
 	}
 	return getMemoryDatabase()
